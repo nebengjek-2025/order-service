@@ -16,77 +16,83 @@ import (
 
 // ConvertString to convert any data type to String
 func ConvertString(v interface{}) string {
-	result := ""
 	if v == nil {
 		return ""
 	}
-	switch v.(type) {
+
+	switch val := v.(type) {
 	case string:
-		result = v.(string)
+		return val
 	case int:
-		result = strconv.Itoa(v.(int))
+		return strconv.Itoa(val)
 	case int64:
-		result = strconv.FormatInt(v.(int64), 10)
+		return strconv.FormatInt(val, 10)
 	case bool:
-		result = strconv.FormatBool(v.(bool))
+		return strconv.FormatBool(val)
 	case float64:
-		result = strconv.FormatFloat(v.(float64), 'f', -1, 64)
+		return strconv.FormatFloat(val, 'f', -1, 64)
 	case []uint8:
-		result = string(v.([]uint8))
+		return string(val)
 	default:
 		resultJSON, err := json.Marshal(v)
-		if err == nil {
-			result = string(resultJSON)
-		} else {
+		if err != nil {
 			log.Println("Error on lib/converter ConvertString() ", err)
+			return ""
 		}
+		return string(resultJSON)
 	}
-
-	return result
 }
 
 // ConvertInt to convert any date type to Int
 func ConvertInt(v interface{}) int {
-	result := int(0)
-	switch v.(type) {
+	switch val := v.(type) {
 	case string:
-		str := strings.TrimSpace(v.(string))
-		result, _ = strconv.Atoi(str)
-	case int:
-		result = int(v.(int))
-	case int64:
-		result = int(v.(int64))
-	case float64:
-		result = int(v.(float64))
-	case []byte:
-		result, _ = strconv.Atoi(string(v.([]byte)))
-	default:
-		result = int(0)
-	}
+		str := strings.TrimSpace(val)
+		result, _ := strconv.Atoi(str)
+		return result
 
-	return result
+	case int:
+		return val
+
+	case int64:
+		return int(val)
+
+	case float64:
+		return int(val)
+
+	case []byte:
+		result, _ := strconv.Atoi(string(val))
+		return result
+
+	default:
+		return 0
+	}
 }
 
 // ConvertInt64 to convert any date type to Int64
 func ConvertInt64(v interface{}) int64 {
-	result := int64(0)
-	switch v.(type) {
+	switch val := v.(type) {
 	case string:
-		str := strings.TrimSpace(v.(string))
-		result, _ = strconv.ParseInt(str, 10, 64)
-	case int:
-		result = int64(v.(int))
-	case int64:
-		result = int64(v.(int64))
-	case float64:
-		result = int64(v.(float64))
-	case []byte:
-		result, _ = strconv.ParseInt(string(v.([]byte)), 10, 64)
-	default:
-		result = int64(0)
-	}
+		val = strings.TrimSpace(val)
+		result, _ := strconv.ParseInt(val, 10, 64)
+		return result
 
-	return result
+	case int:
+		return int64(val)
+
+	case int64:
+		return val
+
+	case float64:
+		return int64(val)
+
+	case []byte:
+		result, _ := strconv.ParseInt(string(val), 10, 64)
+		return result
+
+	default:
+		return 0
+	}
 }
 
 // GetLocalTime to retrieve current local time
