@@ -35,3 +35,36 @@ func (c *UserController) GetProfile(ctx *fiber.Ctx) error {
 
 	return utils.Response(result.Data, "GetProfile", fiber.StatusOK, ctx)
 }
+
+func (c *UserController) PostLocation(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+
+	request := new(model.LocationSuggestionRequest)
+	request.UserID = auth.UserID
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.Error("UserController.PostLocation", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.PostLocation(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "Location Suggestion", fiber.StatusOK, ctx)
+}
+
+func (c *UserController) FindDriver(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+	request := new(model.FindDriverRequest)
+	request.UserID = auth.UserID
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.FindDriver(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
+}

@@ -9,6 +9,7 @@ import (
 	"order-service/src/internal/repository"
 	"order-service/src/internal/usecase"
 	"order-service/src/pkg/databases/mysql"
+	kafkaPkgConfluent "order-service/src/pkg/kafka/confluent"
 	"order-service/src/pkg/log"
 
 	"github.com/redis/go-redis/v9"
@@ -24,23 +25,17 @@ type BootstrapConfig struct {
 	Log      log.Log
 	Validate *validator.Validate
 	Config   *viper.Viper
-	// Producer kafkaPkgConfluent.Producer
-	Redis redis.UniversalClient
+	Producer kafkaPkgConfluent.Producer
+	Redis    redis.UniversalClient
 }
 
 func Bootstrap(config *BootstrapConfig) {
 	// setup repositories
 	userRepository := repository.NewUserRepository(config.DB)
-
-	// setup producer
-	// var userProducer *messaging.UserProducer
-
-	// if config.Producer != nil {
-	// 	userProducer = messaging.NewUserProducer(config.Producer, config.Log)
-	// }
+	walletRepository := repository.NewWalletRepository(config.DB)
 
 	// setup use cases
-	userUseCase := usecase.NewUserUseCase(config.Log, config.Validate, userRepository)
+	userUseCase := usecase.NewUserUseCase(config.Log, config.Validate, userRepository, walletRepository, config.Config, config.Redis, config.Producer)
 
 	// setup controller
 	userController := http.NewUserController(userUseCase, config.Log)

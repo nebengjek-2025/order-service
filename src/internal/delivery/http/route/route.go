@@ -25,4 +25,6 @@ func (c *RouteConfig) Setup() {
 func (c *RouteConfig) SetupAuthRoute() {
 	c.App.Use(c.AuthMiddleware)
 	c.App.Get("/users/v1/profile", c.UserController.GetProfile)
+	c.App.Post("/users/v1/location", c.UserController.PostLocation)
+	c.App.Post("/users/v1/find-driver", c.UserController.FindDriver)
 }

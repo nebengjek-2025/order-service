@@ -19,7 +19,7 @@ func main() {
 	config.LoadRedisConfig(viperConfig)
 	db := config.NewDatabase(viperConfig, logger)
 	redisClient := config.NewRedis()
-	// producer := config.NewKafkaProducer(viperConfig, logger)
+	producer := config.NewKafkaProducer(viperConfig, logger)
 	validate := config.NewValidator(viperConfig)
 	app := config.NewFiber(viperConfig)
 	app.Use(middleware.NewLogger())
@@ -29,8 +29,8 @@ func main() {
 		Log:      logger,
 		Validate: validate,
 		Config:   viperConfig,
-		// Producer:    producer,
-		Redis: redisClient,
+		Producer: producer,
+		Redis:    redisClient,
 	})
 
 	webPort := viperConfig.GetInt("web.port")
