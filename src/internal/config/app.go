@@ -4,6 +4,7 @@ import (
 	"order-service/src/internal/delivery/http"
 	"order-service/src/internal/delivery/http/middleware"
 	"order-service/src/internal/delivery/http/route"
+	"order-service/src/internal/gateway/messaging"
 
 	// "order-service/src/internal/gateway/messaging"
 	"order-service/src/internal/repository"
@@ -34,8 +35,9 @@ func Bootstrap(config *BootstrapConfig) {
 	userRepository := repository.NewUserRepository(config.DB)
 	walletRepository := repository.NewWalletRepository(config.DB)
 
+	userProducer := messaging.NewUserProducer(config.Producer, config.Log)
 	// setup use cases
-	userUseCase := usecase.NewUserUseCase(config.Log, config.Validate, userRepository, walletRepository, config.Config, config.Redis, config.Producer)
+	userUseCase := usecase.NewUserUseCase(config.Log, config.Validate, userRepository, walletRepository, config.Config, config.Redis, userProducer)
 
 	// setup controller
 	userController := http.NewUserController(userUseCase, config.Log)

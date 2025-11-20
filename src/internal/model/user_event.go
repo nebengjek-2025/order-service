@@ -1,10 +1,8 @@
 package model
 
 type UserEvent struct {
-	ID        string `json:"id,omitempty"`
-	Name      string `json:"name,omitempty"`
-	CreatedAt int64  `json:"created_at,omitempty"`
-	UpdatedAt int64  `json:"updated_at,omitempty"`
+	ID      string      `json:"id,omitempty"`
+	Message RequestRide `json:"message,omitempty"`
 }
 
 func (u *UserEvent) GetId() string {

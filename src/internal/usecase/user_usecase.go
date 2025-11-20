@@ -5,10 +5,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"order-service/src/internal/gateway/messaging"
 	"order-service/src/internal/model"
 	"order-service/src/internal/model/converter"
 	httpError "order-service/src/pkg/http-error"
-	kafkaPkgConfluent "order-service/src/pkg/kafka/confluent"
 	"order-service/src/pkg/log"
 	"order-service/src/pkg/utils"
 	"time"
@@ -30,7 +30,7 @@ type UserUseCase struct {
 	WalletRepository *repository.WalletRepository
 	Config           *viper.Viper
 	Redis            redis.UniversalClient
-	Producer         kafkaPkgConfluent.Producer
+	UserProducer     *messaging.UserProducer
 }
 
 func NewUserUseCase(
@@ -40,7 +40,7 @@ func NewUserUseCase(
 	walletRepository *repository.WalletRepository,
 	cfg *viper.Viper,
 	redisClient redis.UniversalClient,
-	producer kafkaPkgConfluent.Producer,
+	userProducer *messaging.UserProducer,
 ) *UserUseCase {
 	return &UserUseCase{
 		Log:              logger,
@@ -49,7 +49,7 @@ func NewUserUseCase(
 		WalletRepository: walletRepository,
 		Config:           cfg,
 		Redis:            redisClient,
-		Producer:         producer,
+		UserProducer:     userProducer,
 	}
 }
 
@@ -79,7 +79,7 @@ func (c *UserUseCase) GetUser(ctx context.Context, request *model.GetUserRequest
 
 func (c *UserUseCase) PostLocation(ctx context.Context, request *model.LocationSuggestionRequest) utils.Result {
 	var result utils.Result
-	mapsClient, err := maps.NewClient(maps.WithAPIKey(c.Config.GetString("thirdparty.google.map_api_key")))
+	mapsClient, err := maps.NewClient(maps.WithAPIKey(c.Config.GetString("thirdparty.google.api_key")))
 	if err != nil {
 		errObj := httpError.NewInternalServerError()
 		errObj.Message = fmt.Sprintf("error creating Google Maps client: %v", err)
@@ -200,14 +200,17 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 		return result
 	}
 	posibleDriver := "No driver available. Don't worry, please try again later."
-	if len(drivers) > 0 {
-		kafkaData := model.RequestRide{
+	if len(drivers) > 0 { // c.Producer.Publish("request-ride", marshaledData)
+		event := converter.UserToEvent(&model.RequestRide{
 			UserId:       request.UserID,
 			RouteSummary: tripPlan,
+		})
+		c.Log.Info("user-usecase", "Publishing user created event", "FindDriver", utils.ConvertString(event))
+		if err = c.UserProducer.Send(event); err != nil {
+			c.Log.Error("user-usecase", fmt.Sprintf("Failed publish user created event : %+v", err), "FindDriver", "")
+			result.Error = httpError.NewInternalServerError()
+			return result
 		}
-		marshaledData, _ := json.Marshal(kafkaData)
-		c.Log.Info("user-usecase", "marshaled", "kafkaProducer", utils.ConvertString(marshaledData))
-		c.Producer.Publish("request-ride", marshaledData)
 		posibleDriver = fmt.Sprintf("Please sit back, there are %d drivers available, we will let you know", len(drivers))
 	}
 	result.Data = model.FindDriverResponse{

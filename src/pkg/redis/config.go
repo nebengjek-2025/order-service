@@ -7,7 +7,8 @@ import (
 )
 
 type CfgRedis struct {
-	UseRedis             bool
+	UseCluster           bool
+	EnableTLS            bool
 	RedisHost            string
 	RedisPort            string
 	RedisPassword        string
@@ -17,19 +18,22 @@ type CfgRedis struct {
 }
 
 type AppConfig struct {
-	UseRedis bool
+	UseCluster bool
 }
 
 type RedisConfig struct {
-	Host     string
-	Port     string
-	Password string
-	DB       int
+	Host      string
+	Port      string
+	Password  string
+	DB        int
+	EnableTLS bool
 }
 
 type RedisClusterConfig struct {
-	Hosts    []string
-	Password string
+	Hosts     []string
+	Username  string
+	Password  string
+	EnableTLS bool
 }
 
 var (
@@ -41,7 +45,7 @@ var (
 func LoadConfig(config *CfgRedis) {
 
 	AppConfigData = AppConfig{
-		UseRedis: config.UseRedis,
+		UseCluster: config.UseCluster,
 	}
 
 	redisDb := config.RedisDB

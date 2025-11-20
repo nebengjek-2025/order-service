@@ -5,7 +5,8 @@ import (
 )
 
 type Producer interface {
-	Publish(topic string, message []byte)
+	Publish(message *k.Message) error
+	PublishChannel(topic string, message []byte)
 }
 
 type Consumer interface {

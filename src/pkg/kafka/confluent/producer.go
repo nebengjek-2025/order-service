@@ -1,6 +1,7 @@
 package kafka
 
 import (
+	"errors"
 	"fmt"
 	"order-service/src/pkg/log"
 
@@ -42,8 +43,35 @@ func (p *producer) errReporter() {
 	}
 }
 
-func (p *producer) Publish(topic string, message []byte) {
+func (p *producer) Publish(message *kafka.Message) error {
+	if p == nil || p.producer == nil {
+		return errors.New("kafka producer belum diinisialisasi")
+	}
+
+	deliveryChan := make(chan kafka.Event, 1)
+	defer close(deliveryChan)
+
+	err := p.producer.Produce(message, deliveryChan)
+	if err != nil {
+		return fmt.Errorf("gagal Produce: %w", err)
+	}
+
+	e := <-deliveryChan
+	m, ok := e.(*kafka.Message)
+	if !ok {
+		return fmt.Errorf("unexpected event type: %T", e)
+	}
+
+	if m.TopicPartition.Error != nil {
+		return fmt.Errorf("delivery gagal: %w", m.TopicPartition.Error)
+	}
+
+	return nil
+}
+
+func (p *producer) PublishChannel(topic string, message []byte) {
 	msgCh := p.producer.ProduceChannel()
+
 	msgCh <- &kafka.Message{
 		TopicPartition: kafka.TopicPartition{
 			Topic:     &topic,

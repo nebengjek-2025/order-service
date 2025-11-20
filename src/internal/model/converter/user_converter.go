@@ -14,3 +14,10 @@ func UserToResponse(user *entity.User) *model.UserResponse {
 		UpdatedAt:    user.UpdatedAt,
 	}
 }
+
+func UserToEvent(user *model.RequestRide) *model.UserEvent {
+	return &model.UserEvent{
+		ID:      user.UserId,
+		Message: *user,
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	"time"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -11,39 +12,51 @@ import (
 var redisClient redis.UniversalClient
 
 func InitConnection() {
-	if !AppConfigData.UseRedis {
-		// Create Redis Client
+	if !AppConfigData.UseCluster {
+		var tlsConf *tls.Config
+		if RedisConfigData.EnableTLS {
+			tlsConf = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			}
+		}
+
 		redisClient = redis.NewClient(&redis.Options{
-			Addr:      fmt.Sprintf("%v:%v", RedisConfigData.Host, RedisConfigData.Port),
-			Password:  RedisConfigData.Password,
-			DB:        RedisConfigData.DB,
-			TLSConfig: &tls.Config{},
+			Addr:         fmt.Sprintf("%s:%v", RedisConfigData.Host, RedisConfigData.Port),
+			Password:     RedisConfigData.Password,
+			DB:           RedisConfigData.DB,
+			TLSConfig:    tlsConf,
+			DialTimeout:  5 * time.Second,
+			ReadTimeout:  3 * time.Second,
+			WriteTimeout: 3 * time.Second,
+			PoolSize:     10,
+			MaxRetries:   2,
 		})
-		// Test Connection
+
 		if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
+			fmt.Println("REDIS ERROR:", err.Error())
 			panic("cannot connect to Redis")
 		}
 	} else {
-		// Create Redis Cluster Client
+		var tlsConf *tls.Config
+		if RedisClusterConfigData.EnableTLS {
+			tlsConf = &tls.Config{
+				MinVersion: tls.VersionTLS12,
+			}
+		}
+
 		redisClient = redis.NewClusterClient(&redis.ClusterOptions{
-			Addrs:    RedisClusterConfigData.Hosts,
-			Password: RedisClusterConfigData.Password,
+			Addrs:        RedisClusterConfigData.Hosts,
+			Username:     RedisClusterConfigData.Username,
+			Password:     RedisClusterConfigData.Password,
+			TLSConfig:    tlsConf,
+			DialTimeout:  5 * time.Second,
+			ReadTimeout:  3 * time.Second,
+			WriteTimeout: 3 * time.Second,
 		})
 
-		// Test Connection
-		for _, addr := range RedisClusterConfigData.Hosts {
-			nodeClient := redis.NewClient(&redis.Options{
-				Addr:     addr,
-				Password: RedisClusterConfigData.Password,
-			})
-
-			_, err := nodeClient.Ping(context.Background()).Result()
-			if err != nil {
-				fmt.Println("REDIS CLUSTER ERROR:", err.Error())
-				panic("Cannot connect to Redis Cluster")
-			}
-
-			nodeClient.Close()
+		if _, err := redisClient.Ping(context.Background()).Result(); err != nil {
+			fmt.Println("REDIS CLUSTER ERROR:", err.Error())
+			panic("Cannot connect to Redis Cluster")
 		}
 	}
 }
