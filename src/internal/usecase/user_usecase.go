@@ -28,6 +28,7 @@ type UserUseCase struct {
 	Validate         *validator.Validate
 	UserRepository   *repository.UserRepository
 	WalletRepository *repository.WalletRepository
+	OrderRepository  *repository.OrderRepository
 	Config           *viper.Viper
 	Redis            redis.UniversalClient
 	UserProducer     *messaging.UserProducer
@@ -38,6 +39,7 @@ func NewUserUseCase(
 	validate *validator.Validate,
 	userRepository *repository.UserRepository,
 	walletRepository *repository.WalletRepository,
+	orderRepository *repository.OrderRepository,
 	cfg *viper.Viper,
 	redisClient redis.UniversalClient,
 	userProducer *messaging.UserProducer,
@@ -47,6 +49,7 @@ func NewUserUseCase(
 		Validate:         validate,
 		UserRepository:   userRepository,
 		WalletRepository: walletRepository,
+		OrderRepository:  orderRepository,
 		Config:           cfg,
 		Redis:            redisClient,
 		UserProducer:     userProducer,
@@ -235,6 +238,32 @@ func (c *UserUseCase) CancelOrder(ctx context.Context, request *model.ConfirmOrd
 
 func (c *UserUseCase) OrderDetail(ctx context.Context, request *model.OrderDetailRequest) utils.Result {
 	var result utils.Result
+	key := fmt.Sprintf("USER:ROUTE:%s", request.UserID)
+	var tripPlan model.RouteSummary
+	redisData, errRedis := c.Redis.Get(ctx, key).Result()
+	if errRedis != nil || redisData == "" {
+		// check order id in db maybe it's completed order
+		order, err := c.OrderRepository.OrderDetail(ctx, request.OrderID)
+		if order != nil && err == nil {
+			result.Data = order
+			return result
+		}
+		errObj := httpError.NewNotFound()
+		errObj.Message = "Order Not Found"
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", errObj.Message, "DetailTrip", utils.ConvertString(errRedis))
+		return result
+	}
+	err := json.Unmarshal([]byte(redisData), &tripPlan)
+	if err != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = fmt.Sprintf("Error unmarshal tripdata: %v", err)
+		result.Error = errObj
+		log.GetLogger().Error("command_usecase", errObj.Message, "DetailTrip", utils.ConvertString(err))
+		return result
+	}
+
+	result.Data = tripPlan
 
 	return result
 }
