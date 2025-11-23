@@ -1,10 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"order-service/src/internal/config"
 	"order-service/src/internal/delivery/http/middleware"
 	"order-service/src/pkg/log"
+	"os"
+	"os/signal"
+	"time"
 )
 
 func main() {
@@ -38,4 +42,23 @@ func main() {
 	if err != nil {
 		log.GetLogger().Error("main", fmt.Sprintf("Failed to start server: %v", err), "main", "")
 	}
+	done := make(chan bool)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, os.Interrupt)
+
+	go func() {
+		<-quit
+		logger.Info("main", "Server order-service is shutting down...", "gracefull", "")
+
+		_, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		if err := app.Shutdown(); err != nil {
+			logger.Error("main", fmt.Sprintf("Error during shutdown: %v", err), "graceful", "")
+		}
+		close(done)
+	}()
+
+	<-done
+	logger.Info("main", fmt.Sprintf("Server %s stopped", viperConfig.GetString("app.name")), "gracefull", "")
 }
