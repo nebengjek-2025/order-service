@@ -27,4 +27,7 @@ func (c *RouteConfig) SetupAuthRoute() {
 	c.App.Get("/users/v1/profile", c.UserController.GetProfile)
 	c.App.Post("/users/v1/location", c.UserController.PostLocation)
 	c.App.Post("/users/v1/find-driver", c.UserController.FindDriver)
+	c.App.Post("/users/v1/confirm-order", c.UserController.ConfirmOrder)
+	c.App.Post("/users/v1/cancel-order", c.UserController.CancelOrder)
+	c.App.Get("/users/v1/order-status/:orderId", c.UserController.GetOrderStatus)
 }

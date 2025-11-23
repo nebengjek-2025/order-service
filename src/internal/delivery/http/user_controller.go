@@ -68,3 +68,51 @@ func (c *UserController) FindDriver(ctx *fiber.Ctx) error {
 
 	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
 }
+
+func (c *UserController) ConfirmOrder(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+	request := new(model.ConfirmOrderRequest)
+	request.UserID = auth.UserID
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.ConfirmOrder(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
+}
+
+func (c *UserController) CancelOrder(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+	request := new(model.ConfirmOrderRequest)
+	request.UserID = auth.UserID
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.ConfirmOrder(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
+}
+
+func (c *UserController) GetOrderStatus(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+	request := new(model.OrderDetailRequest)
+	request.UserID = auth.UserID
+	if err := ctx.ParamsParser(request); err != nil {
+		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.OrderDetail(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
+}

@@ -221,6 +221,24 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 	return result
 }
 
+func (c *UserUseCase) ConfirmOrder(ctx context.Context, request *model.ConfirmOrderRequest) utils.Result {
+	var result utils.Result
+
+	return result
+}
+
+func (c *UserUseCase) CancelOrder(ctx context.Context, request *model.ConfirmOrderRequest) utils.Result {
+	var result utils.Result
+
+	return result
+}
+
+func (c *UserUseCase) OrderDetail(ctx context.Context, request *model.OrderDetailRequest) utils.Result {
+	var result utils.Result
+
+	return result
+}
+
 func (c *UserUseCase) getRouteSuggestions(ctx context.Context, mapsClient *maps.Client, currentRequest model.LocationRequest, destinationRequest model.LocationRequest) (*model.RouteSummary, error) {
 	origin := fmt.Sprintf("%f,%f", currentRequest.Latitude, currentRequest.Longitude)
 	destination := fmt.Sprintf("%f,%f", destinationRequest.Latitude, destinationRequest.Longitude)
