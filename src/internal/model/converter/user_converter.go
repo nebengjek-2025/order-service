@@ -17,7 +17,6 @@ func UserToResponse(user *entity.User) *model.UserResponse {
 
 func UserToEvent(user *model.RequestRide) *model.UserEvent {
 	return &model.UserEvent{
-		ID:      user.UserId,
 		Message: *user,
 	}
 }

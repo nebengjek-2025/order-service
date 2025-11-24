@@ -32,6 +32,7 @@ type UserUseCase struct {
 	Config           *viper.Viper
 	Redis            redis.UniversalClient
 	UserProducer     *messaging.UserProducer
+	Geoservice       *maps.Client
 }
 
 func NewUserUseCase(
@@ -39,20 +40,20 @@ func NewUserUseCase(
 	validate *validator.Validate,
 	userRepository *repository.UserRepository,
 	walletRepository *repository.WalletRepository,
-	orderRepository *repository.OrderRepository,
 	cfg *viper.Viper,
 	redisClient redis.UniversalClient,
 	userProducer *messaging.UserProducer,
+	geo *maps.Client,
 ) *UserUseCase {
 	return &UserUseCase{
 		Log:              logger,
 		Validate:         validate,
 		UserRepository:   userRepository,
 		WalletRepository: walletRepository,
-		OrderRepository:  orderRepository,
 		Config:           cfg,
 		Redis:            redisClient,
 		UserProducer:     userProducer,
+		Geoservice:       geo,
 	}
 }
 
@@ -82,16 +83,8 @@ func (c *UserUseCase) GetUser(ctx context.Context, request *model.GetUserRequest
 
 func (c *UserUseCase) PostLocation(ctx context.Context, request *model.LocationSuggestionRequest) utils.Result {
 	var result utils.Result
-	mapsClient, err := maps.NewClient(maps.WithAPIKey(c.Config.GetString("thirdparty.google.api_key")))
-	if err != nil {
-		errObj := httpError.NewInternalServerError()
-		errObj.Message = fmt.Sprintf("error creating Google Maps client: %v", err)
-		result.Error = errObj
-		c.Log.Error("user-usecase", errObj.Message, "init googleclient", utils.ConvertString(err))
-		return result
-	}
 
-	routeSuggestion, err := c.getRouteSuggestions(ctx, mapsClient, request.CurrentLocation, request.Destination)
+	routeSuggestion, err := c.getRouteSuggestions(ctx, request.CurrentLocation, request.Destination)
 	if err != nil {
 		errObj := httpError.NewNotFound()
 		errObj.Message = fmt.Sprintf("error getRouteSuggestions: %v", err)
@@ -127,6 +120,7 @@ func (c *UserUseCase) PostLocation(ctx context.Context, request *model.LocationS
 
 func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverRequest) utils.Result {
 	var result utils.Result
+
 	key := fmt.Sprintf("USER:ROUTE:%s", request.UserID)
 	var tripPlan model.RouteSummary
 	redisData, errRedis := c.Redis.Get(ctx, key).Result()
@@ -203,7 +197,8 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 		return result
 	}
 	posibleDriver := "No driver available. Don't worry, please try again later."
-	if len(drivers) > 0 { // c.Producer.Publish("request-ride", marshaledData)
+
+	if len(drivers) > 0 {
 		event := converter.UserToEvent(&model.RequestRide{
 			UserId:       request.UserID,
 			RouteSummary: tripPlan,
@@ -268,7 +263,7 @@ func (c *UserUseCase) OrderDetail(ctx context.Context, request *model.OrderDetai
 	return result
 }
 
-func (c *UserUseCase) getRouteSuggestions(ctx context.Context, mapsClient *maps.Client, currentRequest model.LocationRequest, destinationRequest model.LocationRequest) (*model.RouteSummary, error) {
+func (c *UserUseCase) getRouteSuggestions(ctx context.Context, currentRequest model.LocationRequest, destinationRequest model.LocationRequest) (*model.RouteSummary, error) {
 	origin := fmt.Sprintf("%f,%f", currentRequest.Latitude, currentRequest.Longitude)
 	destination := fmt.Sprintf("%f,%f", destinationRequest.Latitude, destinationRequest.Longitude)
 	departureTime := time.Now().Add(5 * time.Minute).Unix()
@@ -283,7 +278,7 @@ func (c *UserUseCase) getRouteSuggestions(ctx context.Context, mapsClient *maps.
 		TrafficModel:  maps.TrafficModelBestGuess,
 	}
 
-	routes, _, err := mapsClient.Directions(ctx, req)
+	routes, _, err := c.Geoservice.Directions(ctx, req)
 	if err != nil {
 		c.Log.Error("user-usecase", err.Error(), "getRouteSuggestions", fmt.Sprintf("Origin: %s, Destination: %s, err: %w", origin, destination, err.Error()))
 		return nil, fmt.Errorf("error making directions request: %w", err)

@@ -32,6 +32,21 @@ type RouteSummary struct {
 	Duration          int     `json:"duration"`
 }
 
+type BroadcastPickupPassanger struct {
+	RouteSummary RouteSummary `json:"routeSummary" bson:"routeSummary"`
+	DriverID     string       `json:"driverId" bson:"driverId"`
+	SocketID     string       `json:"socketId" bson:"socketId"`
+	PassangerID  string       `json:"passangerId" bson:"passangerId"`
+}
+
+type DriverMatch struct {
+	DriverID  string  `json:"Name"`
+	Longitude float64 `json:"Longitude"`
+	Latitude  float64 `json:"Latitude"`
+	Dist      float64 `json:"Dist"`
+	GeoHash   int32   `json:"GeoHash"`
+}
+
 type RequestRide struct {
 	RouteSummary RouteSummary `json:"routeSummary" bson:"routeSummary"`
 	UserId       string       `json:"userId" bson:"userId"`
@@ -50,4 +65,14 @@ type FindDriverResponse struct {
 type FindDriverRequest struct {
 	UserID        string `json:"userId" validate:"required"`
 	PaymentMethod string `json:"paymentMethod" validate:"required,oneof=wallet cash qris"`
+}
+
+type AvailableDriverResponse struct {
+	DriverID       string `json:"driver_id"`
+	Status         string `json:"status"`
+	LastSeenAt     string `json:"last_seen_at"`
+	City           string `json:"city"`
+	Province       string `json:"province"`
+	JenisKendaraan string `json:"jenis_kendaraan"`
+	Nopol          string `json:"nopol"`
 }

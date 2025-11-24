@@ -21,20 +21,20 @@ import (
 )
 
 type BootstrapConfig struct {
-	DB       mysql.DBInterface
-	App      *fiber.App
-	Log      log.Log
-	Validate *validator.Validate
-	Config   *viper.Viper
-	Producer kafkaPkgConfluent.Producer
-	Redis    redis.UniversalClient
+	DB         mysql.DBInterface
+	App        *fiber.App
+	Log        log.Log
+	Validate   *validator.Validate
+	Config     *viper.Viper
+	Producer   kafkaPkgConfluent.Producer
+	Redis      redis.UniversalClient
+	Geoservice *GeoService
 }
 
 func Bootstrap(config *BootstrapConfig) {
 	// setup repositories
 	userRepository := repository.NewUserRepository(config.DB)
 	walletRepository := repository.NewWalletRepository(config.DB)
-	orderRepository := repository.NewOrderRepository(config.DB)
 
 	userProducer := messaging.NewUserProducer(config.Producer, config.Log)
 	// setup use cases
@@ -43,10 +43,11 @@ func Bootstrap(config *BootstrapConfig) {
 		config.Validate,
 		userRepository,
 		walletRepository,
-		orderRepository,
 		config.Config,
 		config.Redis,
-		userProducer)
+		userProducer,
+		config.Geoservice.Client,
+	)
 
 	// setup controller
 	userController := http.NewUserController(userUseCase, config.Log)

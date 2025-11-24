@@ -25,16 +25,22 @@ func main() {
 	redisClient := config.NewRedis()
 	producer := config.NewKafkaProducer(viperConfig, logger)
 	validate := config.NewValidator(viperConfig)
+	geoservice, errG := config.NewGeoService(viperConfig)
+	if errG != nil {
+		logger.Error("main", fmt.Sprintf("Failed to initialize GeoService: %v", errG), "main", "")
+		return
+	}
 	app := config.NewFiber(viperConfig)
 	app.Use(middleware.NewLogger())
 	config.Bootstrap(&config.BootstrapConfig{
-		DB:       db,
-		App:      app,
-		Log:      logger,
-		Validate: validate,
-		Config:   viperConfig,
-		Producer: producer,
-		Redis:    redisClient,
+		DB:         db,
+		App:        app,
+		Log:        logger,
+		Validate:   validate,
+		Config:     viperConfig,
+		Producer:   producer,
+		Redis:      redisClient,
+		Geoservice: geoservice,
 	})
 
 	webPort := viperConfig.GetInt("web.port")
