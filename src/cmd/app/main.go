@@ -9,6 +9,9 @@ import (
 	"os"
 	"os/signal"
 	"time"
+
+	"github.com/hibiken/asynq"
+	"github.com/spf13/viper"
 )
 
 func main() {
@@ -20,6 +23,7 @@ func main() {
 	log.InitLogger(viperConfig)
 	config.NewKafkaConfig(viperConfig)
 	logger := log.GetLogger()
+	asynqClient := config.NewAsynqClient(viperConfig)
 	config.LoadRedisConfig(viperConfig)
 	db := config.NewDatabase(viperConfig, logger)
 	redisClient := config.NewRedis()
@@ -32,25 +36,56 @@ func main() {
 	}
 	app := config.NewFiber(viperConfig)
 	app.Use(middleware.NewLogger())
-	config.Bootstrap(&config.BootstrapConfig{
-		DB:         db,
-		App:        app,
-		Log:        logger,
-		Validate:   validate,
-		Config:     viperConfig,
-		Producer:   producer,
-		Redis:      redisClient,
-		Geoservice: geoservice,
-	})
-
-	webPort := viperConfig.GetInt("web.port")
-	err := app.Listen(fmt.Sprintf(":%d", webPort))
-	if err != nil {
-		log.GetLogger().Error("main", fmt.Sprintf("Failed to start server: %v", err), "main", "")
+	redisOpt := asynq.RedisClientOpt{
+		Addr: fmt.Sprintf("%s:%v", viperConfig.GetString("redis.host"), viperConfig.GetString("redis.port")),
+		DB:   viper.GetInt("redis.db"),
 	}
+	if password := viper.GetString("redis.password"); password != "" {
+		redisOpt.Password = password
+	}
+
+	asynqServer := asynq.NewServer(
+		redisOpt,
+		asynq.Config{
+			Concurrency: 10,
+			Queues: map[string]int{
+				"critical": 6,
+				"default":  3,
+				"low":      1,
+			},
+		},
+	)
+
+	mux := asynq.NewServeMux()
+	config.Bootstrap(&config.BootstrapConfig{
+		DB:          db,
+		App:         app,
+		Log:         logger,
+		Validate:    validate,
+		Config:      viperConfig,
+		Producer:    producer,
+		Redis:       redisClient,
+		Geoservice:  geoservice,
+		AsynqClient: asynqClient,
+		Async:       mux,
+	})
 	done := make(chan bool)
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
+	webPort := viperConfig.GetInt("web.port")
+	go func() {
+		logger.Info("main", fmt.Sprintf("Fiber listening on :%d", webPort), "fiber", "")
+		if err := app.Listen(fmt.Sprintf(":%d", webPort)); err != nil {
+			logger.Error("main", fmt.Sprintf("Failed to start server: %v", err), "fiber", "")
+		}
+	}()
+
+	go func() {
+		logger.Info("main", "Asynq worker started", "asynq", "")
+		if err := asynqServer.Run(mux); err != nil {
+			logger.Error("main", fmt.Sprintf("Asynq server stopped with error: %v", err), "asynq", "")
+		}
+	}()
 
 	go func() {
 		<-quit

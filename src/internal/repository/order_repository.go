@@ -16,6 +16,34 @@ func NewOrderRepository(db mysql.DBInterface) *OrderRepository {
 	}
 }
 
+func (r *OrderRepository) FindOrder(ctx context.Context, id string) (*entity.Order, error) {
+	db, err := r.DB.GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var order entity.Order
+
+	query := `
+		SELECT 
+			o.id,
+			o.order_id,
+			o.passenger_id,
+			o.driver_id,
+			o.created_at,
+			o.updated_at
+		FROM orders o
+		WHERE o.order_id = ?
+	`
+
+	err = db.GetContext(ctx, &order, query, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &order, nil
+}
+
 func (r *OrderRepository) OrderDetail(ctx context.Context, id string) (*entity.OrderDetail, error) {
 	db, err := r.DB.GetDB()
 	if err != nil {
@@ -26,7 +54,7 @@ func (r *OrderRepository) OrderDetail(ctx context.Context, id string) (*entity.O
 
 	query := `
 		SELECT 
-			o.id AS order_id,
+			0.order_id,
 			o.passenger_id,
 			o.driver_id,
 			o.origin_lat,
@@ -61,11 +89,11 @@ func (r *OrderRepository) OrderDetail(ctx context.Context, id string) (*entity.O
 			pc.discount_type,
 			pc.discount_value,
 			pc.max_discount
-		FROM ride_orders o
-		LEFT JOIN payment_transactions pt ON pt.ride_order_id = o.id
-		LEFT JOIN promo_redemptions pr ON pr.ride_order_id = o.id
+		FROM orders o
+		LEFT JOIN payment_transactions pt ON pt.ride_order_id = o.order_id
+		LEFT JOIN promo_redemptions pr ON pr.ride_order_id = o.order_id
 		LEFT JOIN promo_campaigns pc ON pc.id = pr.promo_campaign_id
-		WHERE o.id = ?
+		WHERE o.order_id = ?
 	`
 
 	err = db.GetContext(ctx, &order, query, id)

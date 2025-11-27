@@ -8,9 +8,10 @@ import (
 )
 
 type RouteConfig struct {
-	App            *fiber.App
-	UserController *http.UserController
-	AuthMiddleware fiber.Handler
+	App              *fiber.App
+	UserController   *http.UserController
+	DriverController *http.DriverController
+	AuthMiddleware   fiber.Handler
 }
 
 func (c *RouteConfig) Setup() {
@@ -24,10 +25,16 @@ func (c *RouteConfig) Setup() {
 
 func (c *RouteConfig) SetupAuthRoute() {
 	c.App.Use(c.AuthMiddleware)
+	// passanger routes
 	c.App.Get("/users/v1/profile", c.UserController.GetProfile)
 	c.App.Post("/users/v1/location", c.UserController.PostLocation)
 	c.App.Post("/users/v1/find-driver", c.UserController.FindDriver)
 	c.App.Post("/users/v1/confirm-order", c.UserController.ConfirmOrder)
 	c.App.Post("/users/v1/cancel-order", c.UserController.CancelOrder)
 	c.App.Get("/users/v1/order-status/:orderId", c.UserController.GetOrderStatus)
+
+	// driver routes
+	c.App.Post("/drivers/v1/pickup-passanger", c.DriverController.PickupPassanger)
+	// c.App.Post("/drivers/v1/complete-trip", c.UserController.CompletedTrip)
+	// c.App.Get("/drivers/v1/detail-trip/:orderId", c.UserController.DetailTrip)
 }

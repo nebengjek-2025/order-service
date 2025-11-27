@@ -2,6 +2,7 @@ package utils
 
 import (
 	"crypto/md5"
+	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -13,6 +14,15 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var entityPrefixes = map[string]string{
+	"user":    "USR",
+	"driver":  "DRV",
+	"trip":    "TRP",
+	"order":   "ORD",
+	"wallet":  "WLT",
+	"payment": "PAY",
+}
 
 // ConvertString to convert any data type to String
 func ConvertString(v interface{}) string {
@@ -171,4 +181,22 @@ func FormatDuration(minutes int) string {
 	}
 
 	return fmt.Sprintf("%d jam", hours)
+}
+
+func GenerateUniqueIDWithPrefix(entityType string) string {
+	entityTypeLower := strings.ToLower(entityType)
+	prefix, ok := entityPrefixes[entityTypeLower]
+	if !ok {
+		prefix = "GEN"
+	}
+
+	timestamp := time.Now().UTC().Format("20060102T150405")
+	randomBytes := make([]byte, 4)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		panic(err)
+	}
+	randomHex := strings.ToUpper(hex.EncodeToString(randomBytes))
+
+	return fmt.Sprintf("NBJ_%s_%s_%s", prefix, timestamp, randomHex)
 }

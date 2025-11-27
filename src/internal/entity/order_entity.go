@@ -3,7 +3,8 @@ package entity
 import "time"
 
 type OrderDetail struct {
-	OrderID            uint64  `db:"order_id"`
+	ID                 uint64  `db:"order_id"`
+	OrderID            string  `db:"order_id"`
 	PassengerID        uint64  `db:"passenger_id"`
 	DriverID           *uint64 `db:"driver_id"`
 	OriginLat          float64 `db:"origin_lat"`
@@ -31,6 +32,15 @@ type OrderDetail struct {
 
 	// Promo
 	Promo PromoDetail `json:"promo"`
+}
+
+type Order struct {
+	ID          uint64    `db:"order_id"`
+	OrderID     string    `db:"order_id"`
+	PassengerID uint64    `db:"passenger_id"`
+	DriverID    *uint64   `db:"driver_id"`
+	CreatedAt   time.Time `db:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at"`
 }
 
 type PaymentDetail struct {

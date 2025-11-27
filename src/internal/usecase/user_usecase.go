@@ -18,6 +18,7 @@ import (
 	"order-service/src/internal/repository"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/hibiken/asynq"
 	"github.com/redis/go-redis/v9"
 	"github.com/spf13/viper"
 	"googlemaps.github.io/maps"
@@ -33,6 +34,7 @@ type UserUseCase struct {
 	Redis            redis.UniversalClient
 	UserProducer     *messaging.UserProducer
 	Geoservice       *maps.Client
+	AsynqClient      *asynq.Client
 }
 
 func NewUserUseCase(
@@ -40,22 +42,30 @@ func NewUserUseCase(
 	validate *validator.Validate,
 	userRepository *repository.UserRepository,
 	walletRepository *repository.WalletRepository,
+	orderRepository *repository.OrderRepository,
 	cfg *viper.Viper,
 	redisClient redis.UniversalClient,
 	userProducer *messaging.UserProducer,
 	geo *maps.Client,
+	asynqClient *asynq.Client,
 ) *UserUseCase {
 	return &UserUseCase{
 		Log:              logger,
 		Validate:         validate,
 		UserRepository:   userRepository,
 		WalletRepository: walletRepository,
+		OrderRepository:  orderRepository,
 		Config:           cfg,
 		Redis:            redisClient,
 		UserProducer:     userProducer,
 		Geoservice:       geo,
+		AsynqClient:      asynqClient,
 	}
 }
+
+const (
+	TypeBroadcastDriver = "passanger:request-ride"
+)
 
 func (c *UserUseCase) GetUser(ctx context.Context, request *model.GetUserRequest) utils.Result {
 	var result utils.Result
@@ -199,10 +209,14 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 	posibleDriver := "No driver available. Don't worry, please try again later."
 
 	if len(drivers) > 0 {
-		event := converter.UserToEvent(&model.RequestRide{
+		orderID := utils.GenerateUniqueIDWithPrefix("user")
+		payload := &model.RequestRide{
 			UserId:       request.UserID,
+			OrderTempID:  orderID,
 			RouteSummary: tripPlan,
-		})
+			Attempt:      1,
+		}
+		event := converter.UserToEvent(payload)
 		c.Log.Info("user-usecase", "Publishing user created event", "FindDriver", utils.ConvertString(event))
 		if err = c.UserProducer.Send(event); err != nil {
 			c.Log.Error("user-usecase", fmt.Sprintf("Failed publish user created event : %+v", err), "FindDriver", "")
@@ -210,6 +224,16 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 			return result
 		}
 		posibleDriver = fmt.Sprintf("Please sit back, there are %d drivers available, we will let you know", len(drivers))
+
+		task, err := c.NewBroadcastPassanger(ctx, payload)
+		if err != nil {
+			c.Log.Error("user-usecase", fmt.Sprintf("Error creating broadcast task: %v", err), "FindDriver", "")
+		}
+		info, err := c.AsynqClient.Enqueue(task)
+		if err != nil {
+			c.Log.Error("user-usecase", fmt.Sprintf("Error enqueuing broadcast task: %v", err), "FindDriver", "")
+		}
+		c.Log.Info("user-usecase", "Enqueued broadcast task", "FindDriver", utils.ConvertString(info))
 	}
 	result.Data = model.FindDriverResponse{
 		Message: posibleDriver,
@@ -217,6 +241,68 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 	}
 
 	return result
+}
+
+func (c *UserUseCase) NewBroadcastPassanger(ctx context.Context, payload *model.RequestRide) (*asynq.Task, error) {
+	if payload.Attempt == 0 {
+		payload.Attempt = 1
+	}
+	pyld, err := json.Marshal(payload)
+	if err != nil {
+		c.Log.Error("user-usecase", fmt.Sprintf("Error marshalling payload: %v", err), "FindDriver", "")
+		return nil, err
+	}
+	return asynq.NewTask(TypeBroadcastDriver, pyld, asynq.MaxRetry(5), asynq.ProcessIn(60*time.Second)), nil
+}
+
+func (c *UserUseCase) RequestRide(ctx context.Context, t *asynq.Task) error {
+	var payload model.RequestRide
+	if err := json.Unmarshal(t.Payload(), &payload); err != nil {
+		c.Log.Error("user-usecase", fmt.Sprintf("Error unmarshalling task payload: %v", err), "RequestRide", "")
+		return err
+	}
+	// validate payload if order temp id now already picked by driver
+	order, err := c.OrderRepository.FindOrder(ctx, payload.OrderTempID)
+	if order != nil && err == nil {
+		c.Log.Info("user-usecase", "Order already picked by driver, skipping broadcast", "RequestRide", payload.OrderTempID)
+		return nil
+	}
+	if payload.Attempt >= 5 {
+		c.Log.Info("user-usecase",
+			fmt.Sprintf("Max attempts reached (%d), giving up broadcast", payload.Attempt),
+			"RequestRide",
+			payload.OrderTempID,
+		)
+		return nil
+	}
+	event := converter.UserToEvent(&model.RequestRide{
+		UserId:       payload.UserId,
+		OrderTempID:  payload.OrderTempID,
+		RouteSummary: payload.RouteSummary,
+	})
+	c.Log.Info("user-usecase", "Publishing user created event", "FindDriver", utils.ConvertString(event))
+	if err := c.UserProducer.Send(event); err != nil {
+		c.Log.Error("user-usecase", fmt.Sprintf("Failed publish user created event : %+v", err), "FindDriver", "")
+		return err
+	}
+	nextPayload := payload
+	nextPayload.Attempt = payload.Attempt + 1
+	nextBytes, err := json.Marshal(&nextPayload)
+	if err != nil {
+		c.Log.Error("user-usecase", fmt.Sprintf("Error marshalling next payload: %v", err), "RequestRide", "")
+		return err
+	}
+	nextTask := asynq.NewTask(
+		TypeBroadcastDriver,
+		nextBytes,
+		asynq.MaxRetry(1),
+		asynq.ProcessIn(60*time.Second),
+	)
+	if _, err := c.AsynqClient.Enqueue(nextTask); err != nil {
+		c.Log.Error("user-usecase", fmt.Sprintf("Error enqueue next broadcast task: %v", err), "RequestRide", "")
+		return err
+	}
+	return nil
 }
 
 func (c *UserUseCase) ConfirmOrder(ctx context.Context, request *model.ConfirmOrderRequest) utils.Result {

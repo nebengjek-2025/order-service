@@ -1,5 +1,9 @@
 package model
 
+type PickupPassanger struct {
+	DriverID    string `json:"driverId" validate:"required"`
+	PassangerID string `json:"passangerId" bson:"passangerId"`
+}
 type OrderDetailRequest struct {
 	UserID  string `json:"userId" validate:"required"`
 	OrderID string `json:"orderId" validate:"required"`
@@ -49,7 +53,9 @@ type DriverMatch struct {
 
 type RequestRide struct {
 	RouteSummary RouteSummary `json:"routeSummary" bson:"routeSummary"`
+	OrderTempID  string       `json:"orderTempId" bson:"orderTempId"`
 	UserId       string       `json:"userId" bson:"userId"`
+	Attempt      int          `json:"attempt"`
 }
 
 type Route struct {
