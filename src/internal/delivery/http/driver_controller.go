@@ -27,7 +27,7 @@ func (c *DriverController) PickupPassanger(ctx *fiber.Ctx) error {
 	request := new(model.PickupPassanger)
 	request.DriverID = auth.UserID
 	if err := ctx.BodyParser(request); err != nil {
-		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
+		c.Log.Error("UserController.PickupPassanger", "Failed to parse request body", "error", err.Error())
 		return utils.ResponseError(err, ctx)
 	}
 	result := c.UseCase.PickupPassanger(ctx.Context(), request)
@@ -35,5 +35,21 @@ func (c *DriverController) PickupPassanger(ctx *fiber.Ctx) error {
 		return utils.ResponseError(result.Error, ctx)
 	}
 
-	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
+	return utils.Response(result.Data, "Pickup Passanger", fiber.StatusOK, ctx)
+}
+
+func (c *DriverController) CompletedTrip(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+	request := new(model.RequestCompleteTrip)
+	request.DriverID = auth.UserID
+	if err := ctx.BodyParser(request); err != nil {
+		c.Log.Error("UserController.CompletedTrip", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.CompletedTrip(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "Complete Trip", fiber.StatusOK, ctx)
 }

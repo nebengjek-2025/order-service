@@ -116,3 +116,21 @@ func (r *DriverRepository) SetOnTrip(ctx context.Context, driverID string) error
 
 	return nil
 }
+
+func (r *DriverRepository) SetOnline(ctx context.Context, driverID string) error {
+	db, err := r.DB.GetDB()
+	if err != nil {
+		return err
+	}
+
+	q := `
+		UPDATE driver_availability
+		SET is_available = 1,
+		    status = 'online',
+		    last_seen_at = NOW()
+		WHERE driver_id = ?
+	`
+
+	_, err = db.ExecContext(ctx, q, driverID)
+	return err
+}

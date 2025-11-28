@@ -10,6 +10,21 @@ type PickupPassanger struct {
 	PassangerID string `json:"passangerId" bson:"passangerId" validate:"required"`
 	OrderID     string `json:"orderId" validate:"required"`
 }
+
+type RequestCompleteTrip struct {
+	DriverID       string  `json:"driverId" validate:"required"`
+	OrderID        string  `json:"orderId" validate:"required"`
+	FarePercentage float64 `json:"farePercentage" validate:"required"`
+}
+
+type TripTracker struct {
+	Data DataTrip `json:"data"`
+}
+
+type DataTrip struct {
+	DriverID string `json:"driverId" bson:"driverId"`
+	Distance string `json:"distance" bson:"distance"`
+}
 type OrderDetailRequest struct {
 	UserID  string `json:"userId" validate:"required"`
 	OrderID string `json:"orderId" validate:"required"`

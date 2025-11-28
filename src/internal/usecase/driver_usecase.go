@@ -11,6 +11,7 @@ import (
 	httpError "order-service/src/pkg/http-error"
 	"order-service/src/pkg/log"
 	"order-service/src/pkg/utils"
+	"strconv"
 	"time"
 
 	// "order-service/src/internal/gateway/messaging"
@@ -175,6 +176,114 @@ func (c *DriverUseCase) PickupPassanger(ctx context.Context, request *model.Pick
 	}
 
 	result.Data = tripOrder
+
+	return result
+}
+
+func (c *DriverUseCase) CompletedTrip(ctx context.Context, request *model.RequestCompleteTrip) utils.Result {
+	var result utils.Result
+
+	if err := c.Validate.Struct(request); err != nil {
+		errObj := httpError.NewBadRequest()
+		errObj.Message = fmt.Sprintf("validation error: %v", err.Error())
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", utils.ConvertString(err))
+		return result
+	}
+
+	tripOrder, err := c.OrderRepository.FindOneOrder(ctx, entity.OrderFilter{DriverID: &request.DriverID, OrderID: &request.OrderID})
+	if err != nil || tripOrder == nil {
+		errObj := httpError.NewNotFound()
+		errObj.Message = "Order not found"
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "PickupPassanger", utils.ConvertString(err))
+		return result
+	}
+	if tripOrder.Status != "ON_GOING" {
+		errObj := httpError.NewConflict()
+		errObj.Message = fmt.Sprintf("Cannot complete trip in status %s", tripOrder.Status)
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", tripOrder.Status)
+		return result
+	}
+	var tracker model.TripTracker
+	key := fmt.Sprintf("trip:%s", request.OrderID)
+	driverTracker, errRedis := c.Redis.Get(ctx, key).Result()
+	if errRedis != nil || driverTracker == "" {
+		errObj := httpError.NewNotFound()
+		errObj.Message = fmt.Sprintf("Error get data from redis: %v", errRedis)
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", utils.ConvertString(errRedis))
+		return result
+	}
+	if err := json.Unmarshal([]byte(driverTracker), &tracker); err != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = fmt.Sprintf("Error unmarshal tripdata: %v", err)
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", utils.ConvertString(err))
+		return result
+	}
+
+	if tracker.Data.DriverID != "" && tracker.Data.DriverID != request.DriverID {
+		errObj := httpError.NewConflict()
+		errObj.Message = "Trip data does not belong to this driver"
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", utils.ConvertString(tracker))
+		return result
+	}
+
+	realDistance, err := strconv.ParseFloat(tracker.Data.Distance, 64)
+	if err != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = fmt.Sprintf("Invalid distance value: %v", err)
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", tracker.Data.Distance)
+		return result
+	}
+
+	if tripOrder.DriverID != nil && *tripOrder.DriverID != "" {
+		keyStatusDriver := fmt.Sprintf("DRIVER:PICKING-PASSANGER:%s", *tripOrder.DriverID)
+		if err := c.Redis.Del(ctx, keyStatusDriver).Err(); err != nil {
+			c.Log.Error("driver-usecase", fmt.Sprintf("failed delete redis key %s: %v", keyStatusDriver, err), "CompletedTrip", "")
+		}
+	}
+	duration := time.Since(tripOrder.CreatedAt)
+	durationMinutes := int(duration.Minutes())
+	durationFormatted := utils.FormatDuration(durationMinutes)
+	ok, err := c.OrderRepository.CompleteTrip(ctx, request.OrderID, request.DriverID, realDistance, durationFormatted)
+	if err != nil {
+		errObj := httpError.NewInternalServerError()
+		errObj.Message = "Failed to complete trip"
+		result.Error = errObj
+		c.Log.Error("driver-usecase", fmt.Sprintf("Error updating order to COMPLETED: %v", err), "CompletedTrip", "")
+		return result
+	}
+	if !ok {
+		errObj := httpError.NewConflict()
+		errObj.Message = "Order could not be completed, it may have been updated or cancelled"
+		result.Error = errObj
+		c.Log.Error("driver-usecase", errObj.Message, "CompletedTrip", "concurrent-update")
+		return result
+	}
+
+	if err := c.DriverRepository.SetOnline(ctx, request.DriverID); err != nil {
+		c.Log.Error("driver-usecase",
+			fmt.Sprintf("Failed update driver availability to online: %v", err),
+			"CompletedTrip",
+			"")
+	}
+
+	_ = c.Redis.Del(ctx, key).Err()
+	_ = c.Redis.Del(ctx, fmt.Sprintf("order:%s:distance", request.OrderID)).Err()
+	_ = c.Redis.Del(ctx, fmt.Sprintf("order:%s:driver:%s", request.OrderID, request.DriverID)).Err()
+
+	result.Data = map[string]interface{}{
+		"order_id":        request.OrderID,
+		"driver_id":       request.DriverID,
+		"status":          "COMPLETED",
+		"distance_actual": realDistance,
+		"message":         "Trip completed successfully",
+	}
 
 	return result
 }

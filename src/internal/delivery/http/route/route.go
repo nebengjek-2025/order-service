@@ -36,6 +36,6 @@ func (c *RouteConfig) SetupAuthRoute() {
 
 	// driver routes
 	c.App.Post("/drivers/v1/pickup-passanger", c.DriverController.PickupPassanger)
-	// c.App.Post("/drivers/v1/complete-trip", c.UserController.CompletedTrip)
+	c.App.Post("/drivers/v1/complete-trip", c.DriverController.CompletedTrip)
 	// c.App.Get("/drivers/v1/detail-trip/:orderId", c.UserController.DetailTrip)
 }

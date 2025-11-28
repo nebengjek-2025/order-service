@@ -423,6 +423,37 @@ func (r *OrderRepository) UpdateStatusOrderForDriver(ctx context.Context, orderI
 	return rows > 0, nil
 }
 
+func (r *OrderRepository) CompleteTrip(ctx context.Context, orderID, driverID string, distanceActual float64, durationActual string) (bool, error) {
+	db, err := r.DB.GetDB()
+	if err != nil {
+		return false, err
+	}
+
+	query := `
+		UPDATE orders
+		SET 
+			status = 'COMPLETED',
+			distance_actual = ?,
+			duration_actual = ?,
+			updated_at = NOW()
+		WHERE order_id = ?
+		  AND driver_id = ?
+		  AND status = 'ON_GOING'
+	`
+
+	res, err := db.ExecContext(ctx, query, distanceActual, durationActual, orderID, driverID)
+	if err != nil {
+		return false, err
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return false, err
+	}
+
+	return rows > 0, nil
+}
+
 func defaultString(s, def string) string {
 	if s == "" {
 		return def
