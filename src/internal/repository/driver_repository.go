@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"order-service/src/internal/entity"
 	"order-service/src/pkg/databases/mysql"
 )
@@ -45,4 +46,73 @@ func (r *DriverRepository) FindDriver(ctx context.Context, id string) ([]entity.
 	}
 
 	return drivers, nil
+}
+
+func (r *DriverRepository) GetDetailDriver(ctx context.Context, id string) (*entity.DriverInfo, error) {
+	db, err := r.DB.GetDB()
+	if err != nil {
+		return nil, err
+	}
+
+	var drivers entity.DriverInfo
+	query := `
+		SELECT 
+			i.driver_id,
+			u.full_name,
+			i.city,
+			i.jenis_kendaraan,
+			i.nopol
+		FROM users u
+		JOIN info_driver i 
+			ON u.user_id = i.driver_id
+		WHERE u.user_id = ?;
+		`
+
+	err = db.GetContext(ctx, &drivers, query, id)
+	fmt.Println(err, "<<<<BABI JOKOWI")
+	if err != nil {
+		return nil, err
+	}
+
+	return &drivers, nil
+}
+
+func (r *DriverRepository) SetOnTrip(ctx context.Context, driverID string) error {
+	db, err := r.DB.GetDB()
+	if err != nil {
+		return fmt.Errorf("failed get db: %w", err)
+	}
+
+	query := `
+		UPDATE driver_availability
+		SET 
+			is_available = 0,
+			status = 'on_trip',
+			last_seen_at = NOW()
+		WHERE driver_id = ?
+	`
+
+	res, err := db.ExecContext(ctx, query, driverID)
+	if err != nil {
+		return fmt.Errorf("failed update driver_availability: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed get rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		insertQ := `
+			INSERT INTO driver_availability (
+				driver_id, is_available, status, last_seen_at
+			) VALUES (?, 0, 'on_trip', NOW())
+		`
+
+		if _, err := db.ExecContext(ctx, insertQ, driverID); err != nil {
+			return fmt.Errorf("failed insert driver_availability: %w", err)
+		}
+	}
+
+	return nil
 }

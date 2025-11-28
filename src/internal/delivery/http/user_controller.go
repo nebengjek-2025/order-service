@@ -87,13 +87,13 @@ func (c *UserController) ConfirmOrder(ctx *fiber.Ctx) error {
 
 func (c *UserController) CancelOrder(ctx *fiber.Ctx) error {
 	auth := middleware.GetUser(ctx)
-	request := new(model.ConfirmOrderRequest)
+	request := new(model.CancelOrderRequest)
 	request.UserID = auth.UserID
 	if err := ctx.BodyParser(request); err != nil {
 		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
 		return utils.ResponseError(err, ctx)
 	}
-	result := c.UseCase.ConfirmOrder(ctx.Context(), request)
+	result := c.UseCase.CancelOrder(ctx.Context(), request)
 	if result.Error != nil {
 		return utils.ResponseError(result.Error, ctx)
 	}
@@ -115,4 +115,20 @@ func (c *UserController) GetOrderStatus(ctx *fiber.Ctx) error {
 	}
 
 	return utils.Response(result.Data, "Find Driver", fiber.StatusOK, ctx)
+}
+
+func (c *UserController) GetDriverPickupRequest(ctx *fiber.Ctx) error {
+	auth := middleware.GetUser(ctx)
+	request := new(model.OrderDetailRequest)
+	request.UserID = auth.UserID
+	if err := ctx.ParamsParser(request); err != nil {
+		c.Log.Error("UserController.FindDriver", "Failed to parse request body", "error", err.Error())
+		return utils.ResponseError(err, ctx)
+	}
+	result := c.UseCase.GetDriverPickupRequest(ctx.Context(), request)
+	if result.Error != nil {
+		return utils.ResponseError(result.Error, ctx)
+	}
+
+	return utils.Response(result.Data, "get list driver request for pickup", fiber.StatusOK, ctx)
 }

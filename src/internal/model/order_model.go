@@ -1,8 +1,14 @@
 package model
 
+import (
+	"order-service/src/internal/entity"
+	"time"
+)
+
 type PickupPassanger struct {
 	DriverID    string `json:"driverId" validate:"required"`
-	PassangerID string `json:"passangerId" bson:"passangerId"`
+	PassangerID string `json:"passangerId" bson:"passangerId" validate:"required"`
+	OrderID     string `json:"orderId" validate:"required"`
 }
 type OrderDetailRequest struct {
 	UserID  string `json:"userId" validate:"required"`
@@ -12,6 +18,12 @@ type OrderDetailRequest struct {
 type ConfirmOrderRequest struct {
 	UserID   string `json:"userId" validate:"required"`
 	DriverID string `json:"driverId" validate:"required"`
+	OrderID  string `json:"orderId" validate:"required"`
+}
+
+type CancelOrderRequest struct {
+	UserID  string `json:"userId" validate:"required"`
+	OrderID string `json:"orderId" validate:"required"`
 }
 
 type LocationRequest struct {
@@ -64,6 +76,7 @@ type Route struct {
 }
 
 type FindDriverResponse struct {
+	OrderID string      `json:"orderId"`
 	Message string      `json:"message"`
 	Driver  interface{} `json:"driver"`
 }
@@ -81,4 +94,50 @@ type AvailableDriverResponse struct {
 	Province       string `json:"province"`
 	JenisKendaraan string `json:"jenis_kendaraan"`
 	Nopol          string `json:"nopol"`
+}
+
+type DriversRequest struct {
+	DriverID       string `json:"driver_id"`
+	Name           string `json:"name"`
+	MobileNumber   string `json:"mobile_number"`
+	City           string `json:"city"`
+	Province       string `json:"province"`
+	JenisKendaraan string `json:"jenis_kendaraan"`
+	Nopol          string `json:"nopol"`
+}
+
+type OrderDriverListRequest struct {
+	Order   entity.Order     `json:"order"`
+	Drivers []DriversRequest `json:"drivers"`
+}
+
+type OrderSummary struct {
+	OrderID            string    `json:"order_id"`
+	Status             string    `json:"status"`
+	OriginAddress      string    `json:"origin_address,omitempty"`
+	DestinationAddress string    `json:"destination_address,omitempty"`
+	BestRouteDuration  string    `json:"best_route_duration,omitempty"`
+	BestRoutePrice     float64   `json:"best_route_price,omitempty"`
+	CreatedAt          time.Time `json:"created_at"`
+}
+
+type DriverPickupInfo struct {
+	DriverID    string `json:"driver_id"`
+	Name        string `json:"name"`
+	Vehicle     string `json:"vehicle"`
+	PlateNumber string `json:"plate_number"`
+	City        string `json:"city"`
+}
+
+type OrderPickupSummaryResponse struct {
+	Order   OrderSummary       `json:"order"`
+	Drivers []DriverPickupInfo `json:"drivers"`
+}
+
+type ConfirmOrderResponse struct {
+	OrderID  string `json:"order_id"`
+	UserID   string `json:"user_id"`
+	DriverID string `json:"driver_id"`
+	Status   string `json:"status"`
+	Message  string `json:"message"`
 }

@@ -27,10 +27,11 @@ func (c *RouteConfig) SetupAuthRoute() {
 	c.App.Use(c.AuthMiddleware)
 	// passanger routes
 	c.App.Get("/users/v1/profile", c.UserController.GetProfile)
-	c.App.Post("/users/v1/location", c.UserController.PostLocation)
-	c.App.Post("/users/v1/find-driver", c.UserController.FindDriver)
-	c.App.Post("/users/v1/confirm-order", c.UserController.ConfirmOrder)
-	c.App.Post("/users/v1/cancel-order", c.UserController.CancelOrder)
+	c.App.Post("/order/v1/location", c.UserController.PostLocation)
+	c.App.Post("/order/v1/find-driver", c.UserController.FindDriver)
+	c.App.Post("/order/v1/confirm", c.UserController.ConfirmOrder)
+	c.App.Post("/order/v1/cancel", c.UserController.CancelOrder)
+	c.App.Get("/order/v1/driver-pickup/:orderId", c.UserController.GetDriverPickupRequest)
 	c.App.Get("/users/v1/order-status/:orderId", c.UserController.GetOrderStatus)
 
 	// driver routes

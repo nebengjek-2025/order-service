@@ -43,8 +43,9 @@ func Bootstrap(config *BootstrapConfig) {
 	userRepository := repository.NewUserRepository(config.DB)
 	walletRepository := repository.NewWalletRepository(config.DB)
 	orderRepository := repository.NewOrderRepository(config.DB)
-
+	driverRepository := repository.NewDriverRepository(config.DB)
 	userProducer := messaging.NewUserProducer(config.Producer, config.Log)
+	driverProducer := messaging.NewDriverProducer(config.Producer, config.Log)
 	// setup use cases
 	userUseCase := usecase.NewUserUseCase(
 		config.Log,
@@ -52,6 +53,7 @@ func Bootstrap(config *BootstrapConfig) {
 		userRepository,
 		walletRepository,
 		orderRepository,
+		driverRepository,
 		config.Config,
 		config.Redis,
 		userProducer,
@@ -59,15 +61,29 @@ func Bootstrap(config *BootstrapConfig) {
 		config.AsynqClient,
 	)
 
+	driverUseCase := usecase.NewDriverUseCase(
+		config.Log,
+		config.Validate,
+		userRepository,
+		driverRepository,
+		orderRepository,
+		walletRepository,
+		config.Config,
+		config.Redis,
+		driverProducer,
+	)
+
 	// setup controller
 	userController := http.NewUserController(userUseCase, config.Log)
+	driverController := http.NewDriverController(driverUseCase, config.Log)
 	// setup middleware
 	authMiddleware := middleware.VerifyBearer(config.Config)
 	config.Async.HandleFunc(TypeBroadcastDriver, userUseCase.RequestRide)
 	routeConfig := route.RouteConfig{
-		App:            config.App,
-		UserController: userController,
-		AuthMiddleware: authMiddleware,
+		App:              config.App,
+		UserController:   userController,
+		DriverController: driverController,
+		AuthMiddleware:   authMiddleware,
 	}
 	routeConfig.Setup()
 }
