@@ -55,7 +55,7 @@ type Order struct {
 	EstimatedFare      *float64  `db:"estimated_fare"      json:"estimated_fare,omitempty"`
 	DistanceKm         *float64  `db:"distance_km"         json:"distance_km,omitempty"`
 	DistanceActual     *float64  `db:"distance_actual"     json:"distance_actual,omitempty"`
-	DurationActual     *float64  `db:"duration_actual"     json:"duration_actual,omitempty"`
+	DurationActual     *string   `db:"duration_actual"     json:"duration_actual,omitempty"`
 	CreatedAt          time.Time `db:"created_at"          json:"created_at"`
 	UpdatedAt          time.Time `db:"updated_at"          json:"updated_at"`
 }

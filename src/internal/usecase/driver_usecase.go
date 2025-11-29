@@ -247,7 +247,7 @@ func (c *DriverUseCase) CompletedTrip(ctx context.Context, request *model.Reques
 			c.Log.Error("driver-usecase", fmt.Sprintf("failed delete redis key %s: %v", keyStatusDriver, err), "CompletedTrip", "")
 		}
 	}
-	duration := time.Since(tripOrder.CreatedAt)
+	duration := time.Since(tripOrder.UpdatedAt)
 	durationMinutes := int(duration.Minutes())
 	durationFormatted := utils.FormatDuration(durationMinutes)
 	ok, err := c.OrderRepository.CompleteTrip(ctx, request.OrderID, request.DriverID, realDistance, durationFormatted)
