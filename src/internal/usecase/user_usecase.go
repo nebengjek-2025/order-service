@@ -155,10 +155,9 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 		c.Log.Error("user-usecase", errObj.Message, "FindDriver", utils.ConvertString(err))
 		return result
 	}
-	// check payment method request
+
 	switch request.PaymentMethod {
 	case "EWALLET":
-		// proceed
 		walletCheck, err := c.WalletRepository.GetWalletByUserID(ctx, request.UserID)
 		if err != nil {
 			errObj := httpError.NewInternalServerError()
@@ -174,7 +173,7 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 			c.Log.Error("user-usecase", errObj.Message, "FindDriver", "")
 			return result
 		}
-	case "QRIS", "CASH":
+	case "QRIS":
 		if tripPlan.MaxPrice < 1000 {
 			errObj := httpError.NewBadRequest()
 			errObj.Message = "minimum payment amount is 1,000"
