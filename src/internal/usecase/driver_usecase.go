@@ -273,6 +273,20 @@ func (c *DriverUseCase) CompletedTrip(ctx context.Context, request *model.Reques
 			"")
 	}
 
+	// if wallet kirim ke kafka buat potong saldo
+	if tripOrder.PaymentMethod == "EWALLET" {
+		orderUpdate := &model.NotificationUser{
+			EventType:   "ORDER_COMPLETED",
+			OrderID:     request.OrderID,
+			DriverID:    request.DriverID,
+			PassengerID: tripOrder.PassengerID,
+			Timestamp:   tripOrder.UpdatedAt,
+		}
+		if err := c.DriverProducer.SendOrderCompleted(orderUpdate); err != nil {
+			c.Log.Error("driver-usecase", fmt.Sprintf("Failed publish driver match event: %v", err), "ConfirmOrder", "")
+		}
+	}
+
 	_ = c.Redis.Del(ctx, key).Err()
 	_ = c.Redis.Del(ctx, fmt.Sprintf("order:%s:distance", request.OrderID)).Err()
 	_ = c.Redis.Del(ctx, fmt.Sprintf("order:%s:driver:%s", request.OrderID, request.DriverID)).Err()

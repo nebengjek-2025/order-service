@@ -2,6 +2,7 @@ package repository
 
 import (
 	"context"
+	"database/sql"
 	"order-service/src/internal/entity"
 	"order-service/src/pkg/databases/mysql"
 )
@@ -16,48 +17,26 @@ func NewWalletRepository(db mysql.DBInterface) *WalletRepository {
 	}
 }
 
-func (r *WalletRepository) WalletCheck(ctx context.Context, id string) (*entity.Wallet, error) {
+func (r *WalletRepository) GetWalletByUserID(ctx context.Context, userID string) (*entity.Wallet, error) {
 	db, err := r.DB.GetDB()
 	if err != nil {
 		return nil, err
 	}
 
-	var wallet entity.Wallet
+	var w entity.Wallet
 	query := `
-		SELECT 
-			id,
-			user_id,
-			balance,
-			last_updated
+		SELECT id, user_id, balance, last_updated, created_at, updated_at
 		FROM wallets
 		WHERE user_id = ?
+		LIMIT 1
 	`
-
-	err = db.GetContext(ctx, &wallet, query, id)
-	if err != nil {
+	if err := db.GetContext(ctx, &w, query, userID); err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
 		return nil, err
 	}
-
-	var logs []entity.TransactionLog
-	logQuery := `
-		SELECT 
-			transaction_id,
-			amount,
-			type,
-			description,
-			timestamp
-		FROM wallet_transactions
-		WHERE wallet_id = ?
-		ORDER BY timestamp DESC
-	`
-
-	err = db.SelectContext(ctx, &logs, logQuery, wallet.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	wallet.TransactionLog = logs
-	return &wallet, nil
+	return &w, nil
 }
 
 func (r *WalletRepository) TopUp(ctx context.Context, userID string, amount float64) error {

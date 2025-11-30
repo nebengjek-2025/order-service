@@ -1,8 +1,8 @@
 {
   "openapi": "3.0.3",
   "info": {
-    "title": "Golang Clean Architecture",
-    "description": "Golang Clean Architecture",
+    "title": "Order Service API",
+    "description": "Order Service API Documentation",
     "version": "1.0.0"
   },
   "servers": [

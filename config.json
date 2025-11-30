@@ -30,8 +30,13 @@
     "expiration_time": "1d",
     "refresh_expiration_time": "1d"
   },
+  "thirdparty":{
+    "google":{
+      "api_key":"AIzaSyCMYF7rrIPuQOqnbXMM4s02xkFDjAZNo88"
+    }
+  },
   "redis": {
-    "use_redis": true,
+    "use_cluster": false,
     "host": "localhost",
     "port": 6379,
     "password": "",
@@ -39,6 +44,7 @@
     "pool_size": 10
   },
   "kafka": {
+    "app":{"name":"order-service"},
     "bootstrap": {
       "servers": "localhost:9092"
     },
@@ -51,7 +57,7 @@
       }
     },
     "producer": {
-      "enabled": false
+      "enabled": true
     }
   }
 }

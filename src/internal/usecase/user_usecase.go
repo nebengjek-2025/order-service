@@ -159,7 +159,7 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 	switch request.PaymentMethod {
 	case "EWALLET":
 		// proceed
-		walletCheck, err := c.WalletRepository.WalletCheck(ctx, request.UserID)
+		walletCheck, err := c.WalletRepository.GetWalletByUserID(ctx, request.UserID)
 		if err != nil {
 			errObj := httpError.NewInternalServerError()
 			errObj.Message = fmt.Sprintf("Wallet not found: %v, Please create wallet first", err)
@@ -167,7 +167,7 @@ func (c *UserUseCase) FindDriver(ctx context.Context, request *model.FindDriverR
 			c.Log.Error("user-usecase", errObj.Message, "FindDriver", utils.ConvertString(err))
 			return result
 		}
-		if walletCheck.Balance <= tripPlan.MaxPrice {
+		if walletCheck.Balance < tripPlan.MaxPrice {
 			errObj := httpError.NewBadRequest()
 			errObj.Message = "insufficient balance, please topup"
 			result.Error = errObj
