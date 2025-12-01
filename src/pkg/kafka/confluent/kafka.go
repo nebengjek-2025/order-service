@@ -68,7 +68,10 @@ func (kc KafkaConfig) GetKafkaConfig() *k.ConfigMap {
 	kafkaCfg := k.ConfigMap{}
 
 	if kc.Username != "" {
-		ca, _ := decodeKey(kc.KafkaCaCert)
+		ca, err := decodeKey(kc.KafkaCaCert)
+		if err != nil {
+			panic(err)
+		}
 		kafkaCfg["sasl.mechanism"] = kc.SaslMechanism
 		kafkaCfg["sasl.username"] = kc.Username
 		kafkaCfg["sasl.password"] = kc.Password
