@@ -1,25 +1,52 @@
-FROM golang:1.25-alpine as builder
+# =======================
+# 1. Builder Stage
+# =======================
+FROM golang:1.25-alpine AS builder
 
-# Install needed tools
-RUN apk add --no-cache bash git openssh curl vim busybox-extras procps
+# Install tools build + librdkafka dev (buat confluent-kafka-go)
+RUN apk add --no-cache \
+    git \
+    ca-certificates \
+    tzdata \
+    build-base \
+    librdkafka-dev \
+    pkgconfig
 
-ADD ./ /app
-WORKDIR /app/cmd
+WORKDIR /app
 
-RUN go build -o order-service .
+# Copy go.mod & go.sum dulu supaya cache oke
+COPY go.mod go.sum ./
+RUN go mod download
 
-RUN cd /app
+# Copy semua source
+COPY . .
 
-# Run stage
-FROM --platform=linux/amd64 debian:bullseye-slim
+# Enable CGO (wajib untuk confluent-kafka-go)
+ENV CGO_ENABLED=1
 
-# Update package lists and upgrade packages to fix vulnerabilities
-RUN apt-get update && apt-get upgrade -y
+# ❗ PENTING: pakai build tag "dynamic" supaya pakai librdkafka dari sistem,
+# bukan librdkafka_glibc_linux.a yang dibundel di module (yang bikin error tadi)
+RUN go build -tags dynamic -ldflags="-s -w" -o order-service ./src/cmd/app/main.go
 
-# Set working directory
-WORKDIR /app/cmd
-COPY --from=builder /app/cmd/utility-monitoring .
+# =======================
+# 2. Runtime Stage
+# =======================
+FROM alpine:3.20
 
-RUN apt-get install -y tzdata && apt-get clean
+RUN apk add --no-cache \
+    ca-certificates \
+    tzdata \
+    librdkafka && \
+    adduser -D -g '' appuser
 
-CMD ["/app/cmd/order-service"]
+WORKDIR /app
+
+COPY --from=builder /app/order-service ./order-service
+
+ENV TZ=Asia/Jakarta
+
+EXPOSE 8080
+
+USER appuser
+
+ENTRYPOINT ["./order-service"]

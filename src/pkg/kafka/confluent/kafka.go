@@ -1,6 +1,8 @@
 package kafka
 
 import (
+	"encoding/base64"
+
 	k "gopkg.in/confluentinc/confluent-kafka-go.v1/kafka"
 )
 
@@ -24,12 +26,14 @@ type KafkaConfig struct {
 	Address       string
 	SaslMechanism string
 	AppName       string
+	KafkaCaCert   string
 }
 
 type Cfg struct {
 	KafkaUrl      string
 	KafkaUsername string
 	KafkaPassword string
+	KafkaCaCert   string
 	AppName       string
 }
 
@@ -42,6 +46,7 @@ func InitKafkaConfig(cfg Cfg) KafkaConfig {
 		Username:      cfg.KafkaUsername,
 		Password:      cfg.KafkaPassword,
 		AppName:       cfg.AppName,
+		KafkaCaCert:   cfg.KafkaCaCert,
 		SaslMechanism: "PLAIN",
 	}
 	return kafkaConfig
@@ -51,13 +56,23 @@ func GetConfig() KafkaConfig {
 	return kafkaConfig
 }
 
+func decodeKey(secret string) (string, error) {
+	decoded, err := base64.StdEncoding.DecodeString(secret)
+	if err != nil {
+		return "", err
+	}
+	return string(decoded), nil
+}
+
 func (kc KafkaConfig) GetKafkaConfig() *k.ConfigMap {
 	kafkaCfg := k.ConfigMap{}
 
 	if kc.Username != "" {
+		ca, _ := decodeKey(kc.KafkaCaCert)
 		kafkaCfg["sasl.mechanism"] = kc.SaslMechanism
 		kafkaCfg["sasl.username"] = kc.Username
 		kafkaCfg["sasl.password"] = kc.Password
+		kafkaCfg["ssl.ca.pem"] = ca
 		kafkaCfg["security.protocol"] = "sasl_ssl"
 	}
 	kafkaCfg.SetKey("bootstrap.servers", kc.Address)

@@ -11,6 +11,7 @@ func LoadRedisConfig(viper *viper.Viper) {
 
 	CfgRedis := &redisModule.CfgRedis{
 		UseCluster:           viper.GetString("redis.use_cluster") == "true",
+		EnableTLS:            true,
 		RedisHost:            viper.GetString("redis.host"),
 		RedisPort:            viper.GetString("redis.port"),
 		RedisPassword:        viper.GetString("redis.password"),

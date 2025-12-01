@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"order-service/src/internal/config"
 	"order-service/src/internal/delivery/http/middleware"
@@ -41,8 +42,17 @@ func main() {
 	app := config.NewFiber(viperConfig)
 	app.Use(middleware.NewLogger())
 	redisOpt := asynq.RedisClientOpt{
-		Addr: fmt.Sprintf("%s:%v", viperConfig.GetString("redis.host"), viperConfig.GetString("redis.port")),
-		DB:   viper.GetInt("redis.db"),
+		Addr:     fmt.Sprintf("%s:%v", viperConfig.GetString("redis.host"), viperConfig.GetString("redis.port")),
+		DB:       viperConfig.GetInt("redis.db"),
+		Username: "default",
+		Password: viperConfig.GetString("redis.password"),
+		TLSConfig: &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		},
+		ReadTimeout:  30 * time.Second,
+		WriteTimeout: 10 * time.Second,
+		DialTimeout:  5 * time.Second,
+		PoolSize:     10,
 	}
 	if password := viper.GetString("redis.password"); password != "" {
 		redisOpt.Password = password
