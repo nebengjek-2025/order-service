@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [1.2.0](https://github.com/nebengjek-2025/order-service/compare/v1.1.4...v1.2.0) (2025-12-01)
+
+
+### Features
+
+* handle load config from gogle secret ([7f80ce4](https://github.com/nebengjek-2025/order-service/commit/7f80ce43c2a7a8c24807727256cb89ae55104ff1))
+
 ### [1.1.4](https://github.com/nebengjek-2025/order-service/compare/v1.1.3...v1.1.4) (2025-12-01)
 
 
