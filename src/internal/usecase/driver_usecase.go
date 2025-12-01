@@ -171,7 +171,7 @@ func (c *DriverUseCase) PickupPassanger(ctx context.Context, request *model.Pick
 
 	event := converter.OrderToEvent(request)
 	c.Log.Info("driver-usecase", "Publishing user created event", "FindDriver", utils.ConvertString(event))
-	if err = c.DriverProducer.Send(event); err != nil {
+	if err = c.DriverProducer.SendRequestRide(event); err != nil {
 		c.Log.Error("driver-usecase", fmt.Sprintf("Failed publish driver created event : %+v", err), "order created", "")
 	}
 
