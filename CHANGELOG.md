@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.1](https://github.com/nebengjek-2025/order-service/compare/v1.1.0...v1.1.1) (2025-12-01)
+
+
+### Bug Fixes
+
+* issue on sonar scan pipeline ([6b16edd](https://github.com/nebengjek-2025/order-service/commit/6b16edd4c62ac24bcfbbf4066ba96854b6d8f9ad))
+
 ## 1.1.0 (2025-12-01)
 
 
