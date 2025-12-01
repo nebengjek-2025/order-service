@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [1.1.4](https://github.com/nebengjek-2025/order-service/compare/v1.1.3...v1.1.4) (2025-12-01)
+
+
+### Bug Fixes
+
+* missing sonar properties ([6c8e455](https://github.com/nebengjek-2025/order-service/commit/6c8e45583322dd64120276237457b3438871c9d6))
+
 ### [1.1.3](https://github.com/nebengjek-2025/order-service/compare/v1.1.2...v1.1.3) (2025-12-01)
 
 
